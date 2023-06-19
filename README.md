@@ -24,13 +24,13 @@ A skeleton project for rapid development using the ESP32 board
 
 1. Clone and open the new project
 
-    ```console
+    ```sh
     git clone https://github.com/{USERNAME}/ESP32-rapid-development-template
     ```
 
 1. Install dependencies
 
-    ```console
+    ```sh
     cd app
     npm install
     ```
@@ -41,7 +41,7 @@ A skeleton project for rapid development using the ESP32 board
 
 1. Run the app
 
-    ```console
+    ```sh
     npm run dev
     ```
 
@@ -49,7 +49,7 @@ A skeleton project for rapid development using the ESP32 board
 
 1. Build the app
 
-    ```console
+    ```sh
     npm run build
     ```
 
@@ -63,7 +63,7 @@ This is the steps used to make the project template
 
 1. Use Vite to install svelte (not kit).
 
-    ```console
+    ```sh
     npm init vite
     ```
 
@@ -91,14 +91,14 @@ This is the steps used to make the project template
 
 1. Navigate to app and install dependencies
 
-    ```console
+    ```sh
     cd app
     npm install
     ```
 
 1. Install and configure [vite-plugin-singlefile](https://www.npmjs.com/package/vite-plugin-singlefile) to inline all js and css in `index.html`
 
-    ```console
+    ```bash
     npm i vite-plugin-singlefile
     ```
 
@@ -121,7 +121,7 @@ This is the steps used to make the project template
 
 1. Install and configure [Tailwind CSS](https://tailwindcss.com/)
 
-    ```console
+    ```sh
     npm install -D tailwindcss postcss autoprefixer
     npx tailwindcss init -p
     ```
@@ -149,7 +149,7 @@ This is the steps used to make the project template
 
 1. Install [ESLint](https://eslint.org/) and [Prettier](https://prettier.io/)
 
-    ```console
+    ```sh
     npm init @eslint/config
     npm install --save-dev eslint-config-prettier
     npm install --save-dev --save-exact prettier
@@ -157,7 +157,7 @@ This is the steps used to make the project template
 
     [Install git hook](https://prettier.io/docs/en/install.html#git-hooks)
 
-    ```console
+    ```sh
     npm install --save-dev husky lint-staged
     npx husky install
     npm pkg set scripts.prepare="husky install"
