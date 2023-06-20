@@ -38,3 +38,22 @@
 #if USE_DNS_SERVER
     #include <ArduinoOTA.h>
 #endif
+
+
+/*
+ * Thread priority
+ */
+#define NET_PRIORITY tskIDLE_PRIORITY+5
+
+
+/*
+ * Thread core
+ */
+#define NET_CORE 0
+
+
+/*
+ * Main include
+ */
+
+#include <taskmanager.h>
