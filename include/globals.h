@@ -56,4 +56,5 @@
  * Main include
  */
 
+#include <network.h>
 #include <taskmanager.h>
