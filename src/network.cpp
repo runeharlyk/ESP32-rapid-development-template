@@ -2,7 +2,7 @@
 #include <deviceconfig.h>
 
 #if USE_WIFI && USE_WEBSERVER
-    DRAM_ATTR AsyncWebServer g_WebServer(PORT);
+    DRAM_ATTR CWebServer g_WebServer;
 #endif
 
 #if USE_WIFI
@@ -15,6 +15,7 @@ bool ConnectToWiFi(uint cRetries) {
     log_i("Connection to wifi");
     WiFi.disconnect();
     WiFi.mode(WIFI_STA);
+    WiFi.setHostname(HOSTNAME);
 
     for (uint iPass = 0; iPass < cRetries; iPass++) {
         log_i("Pass %u of %u: Connecting to Wifi SSID: \"%s\" - ESP32 Free Memory: %u, PSRAM:%u, PSRAM Free: %u\n",
@@ -53,7 +54,6 @@ bool ConnectToWiFi(uint cRetries) {
 
     #if USE_WEBSERVER
         log_i("Starting Web Server...");
-        g_WebServer.serveStatic("/", SPIFFS, "/").setDefaultFile("index.html");
         g_WebServer.begin();
         log_i("Web Server begin called!");
     #endif
@@ -64,7 +64,10 @@ bool ConnectToWiFi(uint cRetries) {
 
 void IRAM_ATTR NetworkHandlingLoopEntry(void *) {
         #if USE_MDNS
-        MDNS.begin("esp32");
+        if(MDNS.begin(HOSTNAME)){
+            MDNS.addService("http", "tcp", HTTP_PORT);
+        }
+        
         #endif
 
         unsigned long lastWifiCheck = 0;

@@ -61,4 +61,5 @@
  */
 
 #include <network.h>
+#include <webserver.h>
 #include <taskmanager.h>

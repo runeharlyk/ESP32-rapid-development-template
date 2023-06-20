@@ -1,6 +1,7 @@
 #include <globals.h>
 
 ESPTaskManager g_TaskManager;
+DRAM_ATTR CWebServer g_WebServer;
 
 void setup() {
   Serial.begin(115200);

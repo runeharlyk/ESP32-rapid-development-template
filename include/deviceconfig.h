@@ -1,0 +1,4 @@
+#define HOSTNAME "ESP32"
+#define HTTP_PORT 80
+
+#define JSON_BUFFER_BASE_SIZE 2048
