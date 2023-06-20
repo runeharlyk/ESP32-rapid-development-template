@@ -12,7 +12,7 @@
 
 #define USE_NTP false
 
-#define USE_MDNS false
+#define USE_MDNS true
 
 #define USE_DNS_SERVER false
 

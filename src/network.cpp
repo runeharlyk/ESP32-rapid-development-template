@@ -63,6 +63,9 @@ bool ConnectToWiFi(uint cRetries) {
 }
 
 void IRAM_ATTR NetworkHandlingLoopEntry(void *) {
+        #if USE_MDNS
+        MDNS.begin("esp32");
+        #endif
 
         unsigned long lastWifiCheck = 0;
         unsigned long checkWiFiEveryMs = 1000;

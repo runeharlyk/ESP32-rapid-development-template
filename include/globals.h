@@ -39,6 +39,10 @@
     #include <ArduinoOTA.h>
 #endif
 
+#if USE_MDNS
+    #include <ESPmDNS.h>
+#endif
+
 
 /*
  * Thread priority
