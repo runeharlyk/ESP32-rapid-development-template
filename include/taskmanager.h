@@ -134,6 +134,7 @@ class TaskManager
 };
 
 void IRAM_ATTR NetworkHandlingLoopEntry(void *);
+void IRAM_ATTR JSONWriterTaskEntry(void *);
 
 #define DELETE_TASK(handle) if (handle != nullptr) vTaskDelete(handle)
 
@@ -143,16 +144,19 @@ public:
 
 private:
     TaskHandle_t _taskNetwork       = nullptr;
+    TaskHandle_t _taskJSONWriter    = nullptr;
 
 public:
 
     ~ESPTaskManager()
     {
         DELETE_TASK(_taskNetwork);
+        DELETE_TASK(_taskJSONWriter);
     }
 
     void StartThreads(){
         StartNetworkThread();
+        StartJSONWriterThread();
     }
 
     void StartNetworkThread()
@@ -161,6 +165,22 @@ public:
             log_i( ">> Launching Network Thread.  Mem: %u, LargestBlk: %u, PSRAM Free: %u/%u, ", ESP.getFreeHeap(),ESP.getMaxAllocHeap(), ESP.getFreePsram(), ESP.getPsramSize());
             xTaskCreatePinnedToCore(NetworkHandlingLoopEntry, "NetworkHandlingLoop", DEFAULT_STACK_SIZE, nullptr, NET_PRIORITY, &_taskNetwork, NET_CORE);
         #endif
+    }
+
+    void StartJSONWriterThread()
+    {
+        log_i(">> Launching JSON Writer Thread");
+        xTaskCreatePinnedToCore(JSONWriterTaskEntry, "JSON Writer Loop", STACK_SIZE, nullptr, JSONWRITER_PRIORITY, &_taskJSONWriter, JSONWRITER_CORE);
+    }
+
+    void NotifyJSONWriterThread()
+    {
+        if (_taskJSONWriter == nullptr)
+            return;
+
+        log_w(">> Notifying JSON Writer Thread");
+        // Wake up the writer invoker task if it's sleeping, or request another write cycle if it isn't
+        xTaskNotifyGive(_taskJSONWriter);
     }
 
     void NotifyNetworkThread()

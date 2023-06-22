@@ -44,22 +44,32 @@
 #endif
 
 
+#define STACK_SIZE (ESP_TASK_MAIN_STACK) // Stack size for each new thread
+
 /*
  * Thread priority
  */
-#define NET_PRIORITY tskIDLE_PRIORITY+5
+#define NET_PRIORITY            tskIDLE_PRIORITY+5
+#define JSONWRITER_PRIORITY     tskIDLE_PRIORITY+2
+
 
 
 /*
  * Thread core
  */
-#define NET_CORE 0
+#define NET_CORE                0
+#define JSONWRITER_CORE         0
 
 
 /*
  * Main include
  */
-
-#include <network.h>
-#include <webserver.h>
 #include <taskmanager.h>
+
+#if USE_WIFI && USE_WEBSERVER
+    #include <webserver.h>
+#endif
+
+#if USE_WIFI
+    #include <network.h>
+#endif

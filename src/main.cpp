@@ -9,6 +9,8 @@ void setup() {
   SPIFFS.begin();
   g_TaskManager.begin();
   g_TaskManager.StartThreads();
+
+  g_ptrJSONWriter = std::make_unique<JSONWriter>();
 }
 
 void loop() {
