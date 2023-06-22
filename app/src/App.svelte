@@ -1,6 +1,15 @@
 <script lang="ts">
-  import Counter from './lib/Counter.svelte'
+  import Counter from './components/Counter.svelte'
+
+  import { connect } from "./lib/socket";
+  import location from "./lib/location";
+
+  connect("ws://" + location + "/ws")
 </script>
+
+<svelte:head>
+    <title>ESP32 template project</title>
+</svelte:head>
 
 <main>
   <h1>Vite + Svelte + TS + Tailwind</h1>
