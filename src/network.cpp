@@ -2,7 +2,7 @@
 #include <deviceconfig.h>
 
 #if USE_WIFI && USE_WEBSERVER
-    DRAM_ATTR CWebServer g_WebServer;
+    extern DRAM_ATTR CWebServer g_WebServer;
 #endif
 
 #if USE_WIFI
@@ -53,9 +53,13 @@ bool ConnectToWiFi(uint cRetries) {
     #endif
 
     #if USE_WEBSERVER
-        log_i("Starting Web Server...");
         g_WebServer.begin();
-        log_i("Web Server begin called!");
+    #endif
+    
+    #if USE_MDNS
+    if(MDNS.begin(HOSTNAME)){
+        MDNS.addService("http", "tcp", HTTP_PORT);
+    }
     #endif
 
     bPreviousConnection = true;
@@ -63,12 +67,6 @@ bool ConnectToWiFi(uint cRetries) {
 }
 
 void IRAM_ATTR NetworkHandlingLoopEntry(void *) {
-        #if USE_MDNS
-        if(MDNS.begin(HOSTNAME)){
-            MDNS.addService("http", "tcp", HTTP_PORT);
-        }
-        
-        #endif
 
         unsigned long lastWifiCheck = 0;
         unsigned long checkWiFiEveryMs = 1000;
@@ -88,6 +86,9 @@ void IRAM_ATTR NetworkHandlingLoopEntry(void *) {
                     #endif
                 }
             }
+            #if USE_WEBSERVER
+            g_WebServer.loop();
+            #endif
 
             notifyWait = pdMS_TO_TICKS(1000);
         }

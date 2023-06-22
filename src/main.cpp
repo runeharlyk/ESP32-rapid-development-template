@@ -1,7 +1,10 @@
 #include <globals.h>
+#include <deviceconfig.h>
 
 ESPTaskManager g_TaskManager;
-DRAM_ATTR CWebServer g_WebServer;
+#if USE_WIFI && USE_WEBSERVER
+    DRAM_ATTR CWebServer g_WebServer;
+#endif
 
 void setup() {
   Serial.begin(115200);
@@ -11,6 +14,7 @@ void setup() {
   g_TaskManager.StartThreads();
 
   g_ptrJSONWriter = std::make_unique<JSONWriter>();
+  g_ptrDeviceConfig = std::make_unique<DeviceConfig>();
 }
 
 void loop() {

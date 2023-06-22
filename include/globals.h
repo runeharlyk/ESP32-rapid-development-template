@@ -16,6 +16,10 @@
 
 #include <SPIFFS.h>
 
+/*
+ * Macros
+ */
+#define NAME_OF(x)          #x
 
 /*
  * Feature flags
@@ -65,6 +69,7 @@
  * Main include
  */
 #include <taskmanager.h>
+#include <secrets.h>
 
 #if USE_WIFI && USE_WEBSERVER
     #include <webserver.h>

@@ -163,7 +163,7 @@ public:
     {
         #if USE_WIFI
             log_i( ">> Launching Network Thread.  Mem: %u, LargestBlk: %u, PSRAM Free: %u/%u, ", ESP.getFreeHeap(),ESP.getMaxAllocHeap(), ESP.getFreePsram(), ESP.getPsramSize());
-            xTaskCreatePinnedToCore(NetworkHandlingLoopEntry, "NetworkHandlingLoop", DEFAULT_STACK_SIZE, nullptr, NET_PRIORITY, &_taskNetwork, NET_CORE);
+            xTaskCreatePinnedToCore(NetworkHandlingLoopEntry, "NetworkHandlingLoop", STACK_SIZE, nullptr, NET_PRIORITY, &_taskNetwork, NET_CORE);
         #endif
     }
 
