@@ -6,6 +6,8 @@
 #include <AsyncJson.h>
 #include <ArduinoJson.h>
 #include <HTTPClient.h>
+#include <Update.h>
+#include <SPIFFS.h>
 
 #define HTTP_CODE_OK 200
 #define HTTP_CODE_NOT_FOUND 404
@@ -75,7 +77,7 @@ class CWebServer {
     template<typename Tr>
     static void AddCORSHeaderAndSendResponse(AsyncWebServerRequest * pRequest, Tr * pResponse)
     {
-        pResponse->addHeader("Server","NightDriverStrip");
+        pResponse->addHeader("Server", HOSTNAME);
         pResponse->addHeader("Access-Control-Allow-Origin", "*");
         pRequest->send(pResponse);
     }
@@ -92,13 +94,16 @@ class CWebServer {
     static const std::vector<SettingSpec> & LoadDeviceSettingSpecs();
     static void SendSettingSpecsResponse(AsyncWebServerRequest * pRequest, const std::vector<SettingSpec> & settingSpecs);
     static void SetSettingsIfPresent(AsyncWebServerRequest * pRequest);
-    static long GetEffectIndexFromParam(AsyncWebServerRequest * pRequest, bool post = false);
+    static void UpdateFirmware(AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final);
+    static void UpdateFileSystemImage(AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final);
+    static void HandleUpdate(AsyncWebServerRequest* request, String filename, size_t index, uint8_t* data, size_t len, bool final, size_t upload_size, uint8_t upload_index);
 
     // Endpoint member functions
     static void GetSettingSpecs(AsyncWebServerRequest * pRequest);
     static void GetSettings(AsyncWebServerRequest * pRequest);
     static void SetSettings(AsyncWebServerRequest * pRequest);
-    static void ValidateAndSetSetting(AsyncWebServerRequest * pRequest);
+    static void SaveFile(AsyncWebServerRequest* request, String filename, size_t index, uint8_t* data, size_t len, bool final);
+    static void UpdateRequestHandler(AsyncWebServerRequest * pRequest);
     static void Reset(AsyncWebServerRequest * pRequest);
 
     // Not static because it uses member _staticStats
@@ -129,14 +134,17 @@ class CWebServer {
         _staticStats.FlashChipSize = ESP.getFlashChipSize();
 
         _server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.html");
+        _server.onFileUpload(SaveFile);
         
         _server.on("/statistics",            HTTP_GET,  [this](AsyncWebServerRequest * pRequest)    { this->GetStatistics(pRequest); });
         _server.on("/getStatistics",         HTTP_GET,  [this](AsyncWebServerRequest * pRequest)    { this->GetStatistics(pRequest); });
   
-        _server.on("/settings/validated",    HTTP_POST, [](AsyncWebServerRequest * pRequest)        { ValidateAndSetSetting(pRequest); });
         _server.on("/settings/specs",        HTTP_GET,  [](AsyncWebServerRequest * pRequest)        { GetSettingSpecs(pRequest); });
         _server.on("/settings",              HTTP_GET,  [](AsyncWebServerRequest * pRequest)        { GetSettings(pRequest); });
         _server.on("/settings",              HTTP_POST, [](AsyncWebServerRequest * pRequest)        { SetSettings(pRequest); });
+
+        _server.on("/update/filesystem",     HTTP_POST, UpdateRequestHandler,                       UpdateFirmware);
+        _server.on("/update/firmware",       HTTP_POST, UpdateRequestHandler,                       UpdateFileSystemImage);
 
         _server.on("/reset",                 HTTP_POST, [](AsyncWebServerRequest * pRequest)        { Reset(pRequest); });
 

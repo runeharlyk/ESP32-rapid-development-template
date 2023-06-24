@@ -3,9 +3,7 @@
 
 // Maps settings for which a validator is available to the invocation thereof
 const std::map<String, CWebServer::ValueValidator> CWebServer::settingValidators
-{
-    { DeviceConfig::OpenWeatherApiKeyTag, [](const String& value) { return g_ptrDeviceConfig->ValidateOpenWeatherAPIKey(value); } }
-};
+{};
 
 std::vector<SettingSpec> CWebServer::deviceSettingSpecs{};
 
@@ -49,14 +47,6 @@ bool CWebServer::IsPostParamTrue(AsyncWebServerRequest * pRequest, const String 
     PushPostParamIfPresent<bool>(pRequest, paramName, [&returnValue](auto value) { returnValue = value; return true; });
 
     return returnValue;
-}
-
-long CWebServer::GetEffectIndexFromParam(AsyncWebServerRequest * pRequest, bool post)
-{
-    if (!pRequest->hasParam("effectIndex", post, false))
-        return -1;
-
-    return strtol(pRequest->getParam("effectIndex", post, false)->value().c_str(), NULL, 10);
 }
 
 void CWebServer::GetStatistics(AsyncWebServerRequest * pRequest)
@@ -137,12 +127,6 @@ const std::vector<SettingSpec> & CWebServer::LoadDeviceSettingSpecs()
     if (deviceSettingSpecs.size() == 0)
     {
         auto deviceConfigSpecs = g_ptrDeviceConfig->GetSettingSpecs();
-        deviceSettingSpecs.emplace_back(
-            "effectInterval",
-            "Effect interval",
-            "The duration in milliseconds that an individual effect runs, before the next effect is activated.",
-            SettingSpec::SettingType::PositiveBigInteger
-        );
         deviceSettingSpecs.insert(deviceSettingSpecs.end(), deviceConfigSpecs.begin(), deviceConfigSpecs.end());
     }
 
@@ -174,12 +158,6 @@ void CWebServer::GetSettings(AsyncWebServerRequest * pRequest)
 //   Composing a response is left to the invoker!
 void CWebServer::SetSettingsIfPresent(AsyncWebServerRequest * pRequest)
 {
-    PushPostParamIfPresent<String>(pRequest, DeviceConfig::LocationTag, SET_VALUE(g_ptrDeviceConfig->SetLocation(value)));
-    PushPostParamIfPresent<bool>(pRequest, DeviceConfig::LocationIsZipTag, SET_VALUE(g_ptrDeviceConfig->SetLocationIsZip(value)));
-    PushPostParamIfPresent<String>(pRequest, DeviceConfig::CountryCodeTag, SET_VALUE(g_ptrDeviceConfig->SetCountryCode(value)));
-    PushPostParamIfPresent<String>(pRequest, DeviceConfig::OpenWeatherApiKeyTag, SET_VALUE(g_ptrDeviceConfig->SetOpenWeatherAPIKey(value)));
-    PushPostParamIfPresent<bool>(pRequest, DeviceConfig::Use24HourClockTag, SET_VALUE(g_ptrDeviceConfig->Set24HourClock(value)));
-    PushPostParamIfPresent<bool>(pRequest, DeviceConfig::UseCelsiusTag, SET_VALUE(g_ptrDeviceConfig->SetUseCelsius(value)));
     PushPostParamIfPresent<String>(pRequest, DeviceConfig::NTPServerTag, SET_VALUE(g_ptrDeviceConfig->SetNTPServer(value)));
 }
 
@@ -194,58 +172,63 @@ void CWebServer::SetSettings(AsyncWebServerRequest * pRequest)
     GetSettings(pRequest);
 }
 
-
-// Validate and set one setting. If no validator is available in settingValidators for the setting, validation is skipped.
-//   Requests containing more than one known setting are malformed and rejected.
-void CWebServer::ValidateAndSetSetting(AsyncWebServerRequest * pRequest)
+// Save the posted file to SPIFFS
+void CWebServer::SaveFile(AsyncWebServerRequest* request, String filename, size_t index, uint8_t* data, size_t len, bool final)
 {
-    String paramName;
+    log_v("SaveFile");
+}
 
-    for (auto settingSpec : LoadDeviceSettingSpecs())
-    {
-        if (pRequest->hasParam(settingSpec.Name, true))
-        {
-            if (paramName.isEmpty())
-                paramName = settingSpec.Name;
-            else
-            // We found multiple known settings in the request, which we don't allow
-            {
-                String responseText = "{\"message\": \"Malformed request\"}";
-                auto pResponse = pRequest->beginResponse(HTTP_CODE_BAD_REQUEST, "text/json", responseText);
-                AddCORSHeaderAndSendResponse(pRequest, pResponse);
-                return;
-            }
+// Update the current firmware
+void CWebServer::UpdateFileSystemImage(AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final)
+{
+    log_v("UpdateFileSystemImage");
+
+    HandleUpdate(request, filename, index, data, len, final, (ESP.getFreeSketchSpace() - 0x1000) & 0xFFFFF000, U_FLASH);
+}
+
+// Update the current firmware
+void CWebServer::UpdateFirmware(AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final)
+{
+    log_v("UpdateFirmware");
+
+    HandleUpdate(request, filename, index, data, len, final, UPDATE_SIZE_UNKNOWN, U_SPIFFS);
+}
+
+// Handles updating the filesysten image or firmware 
+void CWebServer::HandleUpdate(AsyncWebServerRequest* request, String filename, size_t index, uint8_t* data, size_t len, bool final, size_t upload_size, uint8_t upload_index) {
+    if (!index) {
+        log_i("Update Start: %s\n", filename.c_str());
+        log_i("Uploading: %d", upload_index);
+        if (!Update.begin(upload_size, upload_index)) {
+            Update.printError(Serial);
         }
     }
-
-    // No known setting in the request, so we can stop processing and go on with our business
-    if (paramName.isEmpty())
-    {
-        AddCORSHeaderAndSendOKResponse(pRequest);
-        return;
-    }
-
-    auto validator = settingValidators.find(paramName);
-    if (validator != settingValidators.end())
-    {
-        const String &paramValue = pRequest->getParam(paramName, true)->value();
-        bool isValid;
-        String validationMessage;
-
-        std::tie(isValid, validationMessage) = validator->second(paramValue);
-
-        if (!isValid)
-        {
-            String responseText = "{\"message\": \"" + validationMessage + "\"}";
-            auto pResponse = pRequest->beginResponse(HTTP_CODE_BAD_REQUEST, "text/json", responseText);
-            AddCORSHeaderAndSendResponse(pRequest, pResponse);
-            return;
+    if (!Update.hasError()) {
+        if (Update.write(data, len) != len) {
+            Update.printError(Serial);
         }
     }
+    if (final) {
+        if (Update.end(true)) {
+            log_i("Update Success: %uB\n", index + len);
+        }
+        else {
+            Update.printError(Serial);
+        }
+    }
+}
 
-    // Process the setting as per usual
-    SetSettingsIfPresent(pRequest);
-    AddCORSHeaderAndSendOKResponse(pRequest);
+// Ensures the request gets send to the client
+void CWebServer::UpdateRequestHandler(AsyncWebServerRequest* request){
+    bool success = !Update.hasError();
+    AsyncWebServerResponse* response = request->beginResponse(200, "text/plain", success ? "OK" : "FAIL");
+    response->addHeader("Connection", "close");
+    request->send(response);
+
+    if (success) {
+        delay(250);
+        ESP.restart();
+    }
 }
 
 // Reset effect config, device config and/or the board itself
