@@ -1,19 +1,5 @@
 #pragma once
 
-#include <inttypes.h>
-#include <iostream>
-#include <memory>
-#include <string>
-#include <sstream>
-#include <sys/time.h>
-#include <exception>
-#include <mutex>
-#include <vector>
-#include <errno.h>
-#include <math.h>
-#include <deque>
-#include <algorithm>
-
 #include <SPIFFS.h>
 
 /*
