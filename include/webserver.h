@@ -114,7 +114,7 @@ class CWebServer {
     CWebServer()
         : _server(HTTP_PORT)
         #if USE_WEBSOCKET
-        , _ws(WEBSOCKET_PATH);
+        , _ws(WEBSOCKET_PATH)
         #endif
     {}
 
@@ -164,7 +164,7 @@ class CWebServer {
 
     void loop() {
         #if USE_WEBSOCKET
-        ws.cleanupClients();
+        _ws.cleanupClients();
         #endif
     }
 };
