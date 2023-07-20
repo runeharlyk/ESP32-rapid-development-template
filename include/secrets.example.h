@@ -6,4 +6,4 @@
 #define PASS ""   // Relevant if wifi is enabled 
 
 #define HTTP_PORT 80                // Relevant if webserver is enabled 
-#define WEBSOCKET_PATH "/ws"        // Relevant if ws is enabled 
+#define WEBSOCKET_PATH "/"          // Relevant if ws is enabled 
