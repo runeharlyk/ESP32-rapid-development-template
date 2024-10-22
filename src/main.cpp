@@ -1,29 +1,14 @@
-#include <globals.h>
-#include <deviceconfig.h>
-#include <apiclient/weatherclient.h>
+#include <ESP32SvelteKit.h>
+#include <PsychicHttpServer.h>
 
-ESPTaskManager g_TaskManager;
-#if USE_WIFI && USE_WEBSERVER
-    DRAM_ATTR CWebServer g_WebServer;
-#endif
+DRAM_ATTR PsychicHttpServer server;
 
-DRAM_ATTR std::unique_ptr<WeatherApiClient> g_ptrWeatherApiClient;
-
-WiFiClientSecure client;
+DRAM_ATTR ESP32SvelteKit esp32sveltekit(&server);
 
 void setup() {
-  Serial.begin(115200);
-  Serial.println("Booting");
-  SPIFFS.begin();
-  g_TaskManager.begin();
-  g_TaskManager.StartThreads();
+    Serial.begin(115200);
 
-  g_ptrJSONWriter = std::make_unique<JSONWriter>();
-  g_ptrDeviceConfig = std::make_unique<DeviceConfig>();
-  g_ptrWeatherApiClient = std::make_unique<WeatherApiClient>(client);
+    esp32sveltekit.begin();
 }
 
-void loop() {
-  g_ptrWeatherApiClient->getWeatherData();
-  delay(10000);
-}
+void loop() { vTaskDelete(nullptr); }

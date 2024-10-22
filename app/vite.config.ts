@@ -1,12 +1,31 @@
-import { defineConfig } from "vite";
-import { svelte } from "@sveltejs/vite-plugin-svelte";
-import { viteSingleFile } from "vite-plugin-singlefile";
+import { sveltekit } from '@sveltejs/kit/vite';
+import type { UserConfig } from 'vite';
+import Icons from 'unplugin-icons/vite';
+import viteLittleFS from './vite-plugin-littlefs';
 
-// https://vitejs.dev/config/
-export default defineConfig({
-  plugins: [svelte(), viteSingleFile()],
-  build: {
-    outDir: "../data",
-    emptyOutDir: true,
-  },
-});
+const config: UserConfig = {
+	plugins: [
+		sveltekit(),
+		Icons({
+			compiler: 'svelte'
+		}),
+		// Shorten file names for LittleFS 32 char limit
+		viteLittleFS()
+	],
+	server: {
+		proxy: {
+			'/api': {
+				target: 'http://esp-sveltekit.local/',
+				changeOrigin: true,
+				ws: true
+			},
+			'/ws': {
+				target: 'http://esp-sveltekit.local/',
+				changeOrigin: true,
+				ws: true
+			}
+		}
+	}
+};
+
+export default config;
