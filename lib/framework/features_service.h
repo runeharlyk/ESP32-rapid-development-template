@@ -1,7 +1,7 @@
 #ifndef FeaturesService_h
 #define FeaturesService_h
 
-#include <Features.h>
+#include <features.h>
 
 #include <ArduinoJson.h>
 #include <PsychicHttp.h>

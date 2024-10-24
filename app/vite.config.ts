@@ -4,23 +4,11 @@ import Icons from 'unplugin-icons/vite';
 import viteLittleFS from './vite-plugin-littlefs';
 
 const config: UserConfig = {
-	plugins: [
-		sveltekit(),
-		Icons({
-			compiler: 'svelte'
-		}),
-		// Shorten file names for LittleFS 32 char limit
-		viteLittleFS()
-	],
+	plugins: [sveltekit(), Icons({ compiler: 'svelte' }), viteLittleFS()],
 	server: {
 		proxy: {
 			'/api': {
-				target: 'http://esp-sveltekit.local/',
-				changeOrigin: true,
-				ws: true
-			},
-			'/ws': {
-				target: 'http://esp-sveltekit.local/',
+				target: 'http://192.168.0.15',
 				changeOrigin: true,
 				ws: true
 			}

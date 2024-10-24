@@ -19,7 +19,7 @@
 	export let data: LayoutData;
 
 	onMount(() => {
-		socket.init(`ws://${window.location.host}/ws/events`);
+		socket.init(`ws://${window.location.host}/api/v1/ws/events`);
 
 		addEventListeners();
 	});

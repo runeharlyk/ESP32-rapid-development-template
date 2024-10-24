@@ -22,12 +22,10 @@ using namespace std::placeholders; // for `_1` etc
 
 static char md5[33] = "\0";
 static size_t fsize = 0;
-static size_t uploaded = 0;
 
 static FileType fileType = ft_none;
 
-UploadFirmwareService::UploadFirmwareService(PsychicHttpServer *server, EventSocket *socket)
-    : _server(server), _socket(socket) {}
+UploadFirmwareService::UploadFirmwareService() {}
 
 void UploadFirmwareService::begin() {
     uploadHandler.onUpload(std::bind(&UploadFirmwareService::handleUpload, this, _1, _2, _3, _4, _5, _6));
@@ -101,18 +99,17 @@ esp_err_t UploadFirmwareService::handleUpload(PsychicRequest *request, const Str
         if (Update.write(data, len) != len) {
             handleError(request, 500);
         } else {
-            uploaded += len;
-            char buffer[16];
-            snprintf(buffer, sizeof(buffer), "%f", (float)uploaded / (float)fsize * 100.f);
-            _socket->emit("otastatus", buffer);
+            char buffer[64];
+            snprintf(buffer, sizeof(buffer), "{\"status\":\"progress\",\"progress\":%.1f}",
+                     (float)Update.progress() / (float)fsize * 100.f);
+            socket.emit("otastatus", buffer);
             delay(20);
-            ESP_LOGI(TAG, "Wrote more %d (%d/%d) - %s", len, uploaded, fsize, buffer);
         }
         if (final) {
             if (!Update.end(true)) {
                 handleError(request, 500);
             } else {
-                _socket->emit("otastatus", "100");
+                socket.emit("otastatus", "{\"status\":\"finished\",\"progress\":100}");
                 ESP_LOGI(TAG, "Finish writing update");
             }
         }
@@ -135,7 +132,6 @@ esp_err_t UploadFirmwareService::uploadComplete(PsychicRequest *request) {
 
     // if no error, send the success response
     if (!request->_tempObject) {
-        request->reply(200);
         ESP_LOGI(TAG, "Finish updating");
         system_service::restart();
         return ESP_OK;
@@ -152,6 +148,9 @@ esp_err_t UploadFirmwareService::uploadComplete(PsychicRequest *request) {
 }
 
 esp_err_t UploadFirmwareService::handleError(PsychicRequest *request, int code) {
+    char buffer[64];
+    snprintf(buffer, sizeof(buffer), "{\"status\":\"error\",\"error\":\"%d\"}", Update.getError());
+    socket.emit("otastatus", buffer);
     // if we have had an error already, do nothing
     if (request->_tempObject) {
         return ESP_OK;

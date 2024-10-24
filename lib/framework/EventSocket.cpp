@@ -42,9 +42,7 @@ const char *getEventPayload(const char *msg) {
     return payload;
 }
 
-EventSocket::EventSocket(PsychicHttpServer *server) : _server(server) {}
-
-void EventSocket::begin() {
+EventSocket::EventSocket() {
     _socket.onOpen((std::bind(&EventSocket::onWSOpen, this, std::placeholders::_1)));
     _socket.onClose(std::bind(&EventSocket::onWSClose, this, std::placeholders::_1));
     _socket.onFrame(std::bind(&EventSocket::onFrame, this, std::placeholders::_1, std::placeholders::_2));
@@ -174,3 +172,5 @@ void EventSocket::onEvent(String event, EventCallback callback) { event_callback
 void EventSocket::onSubscribe(String event, SubscribeCallback callback) {
     subscribe_callbacks[event].push_back(callback);
 }
+
+EventSocket socket;

@@ -2,9 +2,8 @@
 
 static const char *TAG = "APService";
 
-APSettingsService::APSettingsService(PsychicHttpServer *server)
-    : _server(server),
-      endpoint(APSettings::read, APSettings::update, this),
+APSettingsService::APSettingsService()
+    : endpoint(APSettings::read, APSettings::update, this),
       _fsPersistence(APSettings::read, APSettings::update, this, AP_SETTINGS_FILE),
       _dnsServer(nullptr),
       _lastManaged(0),
@@ -12,10 +11,7 @@ APSettingsService::APSettingsService(PsychicHttpServer *server)
     addUpdateHandler([&](const String &originId) { reconfigureAP(); }, false);
 }
 
-void APSettingsService::begin() {
-    _fsPersistence.readFromFS();
-    reconfigureAP();
-}
+void APSettingsService::begin() {}
 
 void APSettingsService::reconfigureAP() {
     _lastManaged = millis() - MANAGE_NETWORK_DELAY;
@@ -55,6 +51,7 @@ void APSettingsService::manageAP() {
 
 void APSettingsService::startAP() {
     ESP_LOGI(TAG, "Starting software access point at: %s", _state.ssid.c_str());
+    WiFi.mode(WIFI_MODE_APSTA);
     WiFi.softAPConfig(_state.localIP, _state.gatewayIP, _state.subnetMask);
     WiFi.softAP(_state.ssid.c_str(), _state.password.c_str(), _state.channel, _state.ssidHidden, _state.maxClients);
 #if CONFIG_IDF_TARGET_ESP32C3

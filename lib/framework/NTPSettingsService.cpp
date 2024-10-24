@@ -2,9 +2,8 @@
 
 static const char *TAG = "NPT Service";
 
-NTPSettingsService::NTPSettingsService(PsychicHttpServer *server)
-    : _server(server),
-      endpoint(NTPSettings::read, NTPSettings::update, this),
+NTPSettingsService::NTPSettingsService()
+    : endpoint(NTPSettings::read, NTPSettings::update, this),
       _fsPersistence(NTPSettings::read, NTPSettings::update, this, NTP_SETTINGS_FILE) {
     addUpdateHandler([&](const String &originId) { configureNTP(); }, false);
 }
@@ -16,9 +15,6 @@ void NTPSettingsService::begin() {
     WiFi.onEvent(std::bind(&NTPSettingsService::onStationModeGotIP, this, std::placeholders::_1, std::placeholders::_2),
                  WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_GOT_IP);
 
-    ESP_LOGV("NTPSettingsService", "Registered POST endpoint: %s", TIME_PATH);
-
-    _fsPersistence.readFromFS();
     configureNTP();
 }
 

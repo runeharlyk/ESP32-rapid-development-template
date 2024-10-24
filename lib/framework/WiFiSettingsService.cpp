@@ -2,19 +2,15 @@
 
 static const char *TAG = "Wifi Service";
 
-WiFiSettingsService::WiFiSettingsService(PsychicHttpServer *server,
-
-                                         EventSocket *socket)
-    : _server(server),
-      endpoint(WiFiSettings::read, WiFiSettings::update, this),
+WiFiSettingsService::WiFiSettingsService()
+    : endpoint(WiFiSettings::read, WiFiSettings::update, this),
       _fsPersistence(WiFiSettings::read, WiFiSettings::update, this, WIFI_SETTINGS_FILE),
-      _lastConnectionAttempt(0),
-      _socket(socket) {
+      _lastConnectionAttempt(0) {
     addUpdateHandler([&](const String &originId) { reconfigureWiFiConnection(); }, false);
 }
 
 void WiFiSettingsService::initWiFi() {
-    WiFi.mode(WIFI_MODE_STA); // this is the default.
+    WiFi.mode(WIFI_MODE_STA);
 
     // Disable WiFi config persistance and auto reconnect
     WiFi.persistent(false);
@@ -27,8 +23,6 @@ void WiFiSettingsService::initWiFi() {
                  WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_STOP);
     WiFi.onEvent(onStationModeGotIP, WiFiEvent_t::ARDUINO_EVENT_WIFI_STA_GOT_IP);
 
-    _fsPersistence.readFromFS();
-    reconfigureWiFiConnection();
     if (!_state.wifiSettings.empty()) {
         configureNetwork(_state.wifiSettings.front());
     }
@@ -159,8 +153,10 @@ void WiFiSettingsService::configureNetwork(wifi_settings_t &network) {
     WiFi.setHostname(_state.hostname.c_str());
 
     // attempt to connect to the network
-    WiFi.begin(network.ssid.c_str(), network.password.c_str(), network.channel, network.bssid);
-    // WiFi.begin(network.ssid.c_str(), network.password.c_str());
+    ESP_LOGI(TAG, "Connection to wifi: %s", network.ssid.c_str());
+    WiFi.begin(network.ssid.c_str(), network.password.c_str());
+
+    delay(750);
 
 #if CONFIG_IDF_TARGET_ESP32C3
     WiFi.setTxPower(WIFI_POWER_8_5dBm); // https://www.wemos.cc/en/latest/c3/c3_mini_1_0_0.html#about-wifi
@@ -168,10 +164,10 @@ void WiFiSettingsService::configureNetwork(wifi_settings_t &network) {
 }
 
 void WiFiSettingsService::updateRSSI() {
-    if (!_socket->hasSubscribers("rssi")) return;
+    if (!socket.hasSubscribers("rssi")) return;
     char buffer[8];
     snprintf(buffer, sizeof(buffer), "%d", WiFi.RSSI());
-    _socket->emit("rssi", buffer);
+    socket.emit("rssi", buffer);
 }
 
 void WiFiSettingsService::onStationModeDisconnected(WiFiEvent_t event, WiFiEventInfo_t info) { WiFi.disconnect(true); }

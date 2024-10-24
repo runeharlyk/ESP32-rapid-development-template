@@ -11,16 +11,11 @@
 #include <HTTPUpdate.h>
 // #include <SSLCertBundle.h>
 
-#define GITHUB_FIRMWARE_PATH "/api/v1/downloadUpdate"
 #define EVENT_DOWNLOAD_OTA "otastatus"
 #define OTA_TASK_STACK_SIZE 9216
 
 class DownloadFirmwareService {
   public:
-    DownloadFirmwareService(EventSocket *socket);
-
+    DownloadFirmwareService();
     esp_err_t handleDownloadUpdate(PsychicRequest *request, JsonVariant &json);
-
-  private:
-    EventSocket *_socket;
 };

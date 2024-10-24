@@ -44,9 +44,9 @@
 
 	let menuItems = [
 		{
-			title: 'Pedometer',
+			title: 'Light',
 			icon: Control,
-			href: '/pedometer',
+			href: '/demo',
 			feature: true
 		},
 		{

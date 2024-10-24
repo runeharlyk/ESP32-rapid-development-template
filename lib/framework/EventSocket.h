@@ -1,7 +1,7 @@
 #ifndef Socket_h
 #define Socket_h
 
-#include <Features.h>
+#include <features.h>
 #include <PsychicHttp.h>
 #include <StatefulService.h>
 #include <list>
@@ -15,11 +15,9 @@ typedef std::function<void(const String &originId, bool sync)> SubscribeCallback
 
 class EventSocket {
   public:
-    EventSocket(PsychicHttpServer *server);
+    EventSocket();
 
     PsychicWebSocketHandler *getHandler() { return &_socket; }
-
-    void begin();
 
     bool hasSubscribers(const char *event);
 
@@ -32,7 +30,6 @@ class EventSocket {
     // otherwise it will be broadcasted to all clients except the originId
 
   private:
-    PsychicHttpServer *_server;
     PsychicWebSocketHandler _socket;
 
     std::map<String, std::list<int>> client_subscriptions;
@@ -45,5 +42,7 @@ class EventSocket {
     void onWSClose(PsychicWebSocketClient *client);
     esp_err_t onFrame(PsychicWebSocketRequest *request, httpd_ws_frame *frame);
 };
+
+extern EventSocket socket;
 
 #endif

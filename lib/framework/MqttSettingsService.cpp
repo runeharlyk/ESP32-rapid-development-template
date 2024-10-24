@@ -38,9 +38,8 @@ static char *retainCstr(const char *cstr, char **ptr) {
     return *ptr;
 }
 
-MqttSettingsService::MqttSettingsService(PsychicHttpServer *server)
-    : _server(server),
-      endpoint(MqttSettings::read, MqttSettings::update, this),
+MqttSettingsService::MqttSettingsService()
+    : endpoint(MqttSettings::read, MqttSettings::update, this),
       _fsPersistence(MqttSettings::read, MqttSettings::update, this, MQTT_SETTINGS_FILE),
       _retainedHost(nullptr),
       _retainedClientId(nullptr),
@@ -66,7 +65,6 @@ void MqttSettingsService::begin() {
     _mqttClient.onConnect(std::bind(&MqttSettingsService::onMqttConnect, this, std::placeholders::_1));
     _mqttClient.onDisconnect(std::bind(&MqttSettingsService::onMqttDisconnect, this, std::placeholders::_1));
     _mqttClient.onError(std::bind(&MqttSettingsService::onMqttError, this, std::placeholders::_1));
-    _fsPersistence.readFromFS();
 }
 
 void MqttSettingsService::loop() {

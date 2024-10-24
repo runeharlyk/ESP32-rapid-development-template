@@ -8,17 +8,16 @@
 #include <ESPFS.h>
 #include <ESPmDNS.h>
 #include <EventSocket.h>
-#include <FeaturesService.h>
+#include <features_service.h>
 #include <MqttSettingsService.h>
-#include <MqttStatus.h>
 #include <NTPSettingsService.h>
-#include <PedoMeter.h>
 #include <PsychicHttp.h>
 #include <UploadFirmwareService.h>
 #include <WiFi.h>
 #include <WiFiSettingsService.h>
 #include <system_service.h>
 #include <filesystem_service.h>
+#include <LightService.h>
 
 #include <WWWData.h>
 
@@ -40,11 +39,7 @@ class ESP32SvelteKit {
 
     void begin();
 
-    FS *getFS() { return &ESPFS; }
-
     PsychicHttpServer *getServer() { return _server; }
-
-    EventSocket *getSocket() { return &_socket; }
 
     StatefulService<WiFiSettings> *getWiFiSettingsService() { return &_wifiSettingsService; }
 
@@ -68,7 +63,6 @@ class ESP32SvelteKit {
     PsychicHttpServer *_server;
     WiFiSettingsService _wifiSettingsService;
     APSettingsService _apSettingsService;
-    EventSocket _socket;
 #if FT_ENABLED(USE_NTP)
     NTPSettingsService _ntpSettingsService;
 #endif
@@ -80,12 +74,12 @@ class ESP32SvelteKit {
 #endif
 #if FT_ENABLED(USE_MQTT)
     MqttSettingsService _mqttSettingsService;
-    MqttStatus _mqttStatus;
 #endif
 #if FT_ENABLED(USE_ANALYTICS)
     AnalyticsService _analyticsService;
 #endif
-    PedoMeter _pedoMeter;
+
+    LightService lightService;
 
     String _appName = APP_NAME;
 

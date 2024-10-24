@@ -12,17 +12,16 @@
 
 class AnalyticsService {
   public:
-    AnalyticsService(EventSocket *socket) : _socket(socket) {};
+    AnalyticsService() {};
 
     void loop() { EXECUTE_EVERY_N_MS(ANALYTICS_INTERVAL, updateAnalytics()); };
 
   private:
-    EventSocket *_socket;
     JsonDocument doc;
     char message[MAX_ESP_ANALYTICS_SIZE];
 
     void updateAnalytics() {
-        if (!_socket->hasSubscribers(EVENT_ANALYTICS)) return;
+        if (!socket.hasSubscribers(EVENT_ANALYTICS)) return;
         doc.clear();
         doc["uptime"] = millis() / 1000;
         doc["free_heap"] = ESP.getFreeHeap();
@@ -34,6 +33,6 @@ class AnalyticsService {
         doc["core_temp"] = temperatureRead();
 
         serializeJson(doc, message);
-        _socket->emit(EVENT_ANALYTICS, message);
+        socket.emit(EVENT_ANALYTICS, message);
     }
 };
