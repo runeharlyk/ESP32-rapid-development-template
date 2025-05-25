@@ -12,16 +12,16 @@ void setup() {
 
     EventBus::subscribe<Temp>([](Temp const& t) {
         Serial.print("fast: ");
-        Serial.println(t.serialize());
+        Serial.println(t.value);
     });
     EventBus::subscribe<Temp>(1000, [](Temp const& t) {
         Serial.print("throttled: ");
-        Serial.println(t.serialize());
+        Serial.println(t.value);
     });
 
     EventBus::subscribe<Command>([](Command const& c) {
         Serial.print("main - command: ");
-        Serial.println(c.serialize());
+        Serial.println(c.lx);
     });
 }
 
@@ -30,9 +30,4 @@ void loop() {
     Temp t {.value = v++};
     EventBus::publish<Temp>(t);
     delay(200);
-    if (v > 10) {
-        while (true) {
-            delay(1000);
-        }
-    }
 }

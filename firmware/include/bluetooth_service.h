@@ -17,6 +17,7 @@ class BluetoothService {
     BLECharacteristic* _rxCharacteristic;
     bool _deviceConnected;
     void* _cmdSubHandle;
+    void* _tempSubHandle;
 
     class ServerCallbacks : public BLEServerCallbacks {
         BluetoothService* _service;
@@ -38,21 +39,41 @@ class BluetoothService {
   public:
     BluetoothService()
         : _server(nullptr), _txCharacteristic(nullptr), _rxCharacteristic(nullptr), _deviceConnected(false) {}
-    ~BluetoothService() { EventBus::unsubscribe<Command>(_cmdSubHandle); }
+    ~BluetoothService() {
+        EventBus::unsubscribe<Command>(_cmdSubHandle);
+        EventBus::unsubscribe<Temp>(_tempSubHandle);
+    }
 
     void begin() {
-        _cmdSubHandle = EventBus::subscribe<Command>(0, [this](Command const& cmd) { sendToWebApp(cmd); });
+        _cmdSubHandle = EventBus::subscribe<Command>(0, [this](Command const& cmd) {
+            std::string cmdStr = "CMD:" + std::to_string(cmd.lx);
+            sendData(cmdStr);
+        });
+
+        _tempSubHandle = EventBus::subscribe<Temp>(0, [this](Temp const& temp) {
+            std::string tempStr = "TEMP:" + std::to_string(temp.value);
+            sendData(tempStr);
+        });
+
         setup();
     }
 
-    void onWebAppCommand(Command const& cmd) { EventBus::publish<Command>(cmd, _cmdSubHandle); }
+    void handleReceivedData(const std::string& data) {
+        ESP_LOGI("BluetoothService", "Received: %s", data.c_str());
 
-    void sendToWebApp(Command const& cmd) {}
+        if (data.substr(0, 4) == "CMD:") {
+            try {
+                float cmdValue = std::stof(data.substr(4));
+                Command cmd {.lx = cmdValue};
+                EventBus::publish<Command>(cmd);
+            } catch (const std::exception& e) {
+                ESP_LOGE("BluetoothService", "Failed to parse command: %s", e.what());
+            }
+        }
+    }
 
     void restart();
     void setup();
-    void handleReceivedData(const std::string& data);
-
     void sendData(const std::string& data);
     void sendData(uint8_t* data, size_t length);
 };
@@ -73,23 +94,6 @@ void BluetoothService::RXCallbacks::onWrite(BLECharacteristic* characteristic) {
     std::string value = characteristic->getValue();
     if (!value.empty()) {
         _service->handleReceivedData(value);
-    }
-}
-
-void BluetoothService::handleReceivedData(const std::string& data) {
-    ESP_LOGI("BluetoothService", "Received: %s", data.c_str());
-
-    std::string response = "ACK: " + data;
-    sendData(response);
-}
-
-void BluetoothService::sendData(const std::string& data) {
-    if (_deviceConnected && _txCharacteristic) {
-        _txCharacteristic->setValue(data);
-        _txCharacteristic->notify();
-        ESP_LOGI("BluetoothService", "Sent: %s", data.c_str());
-    } else {
-        ESP_LOGW("BluetoothService", "Cannot send data, no device connected or TX characteristic invalid.");
     }
 }
 
@@ -123,6 +127,16 @@ void BluetoothService::setup() {
     _server->getAdvertising()->start();
 
     ESP_LOGI("BluetoothService", "BLE UART service started, advertising as %s", deviceName);
+}
+
+void BluetoothService::sendData(const std::string& data) {
+    if (_deviceConnected && _txCharacteristic) {
+        _txCharacteristic->setValue(data);
+        _txCharacteristic->notify();
+        ESP_LOGI("BluetoothService", "Sent: %s", data.c_str());
+    } else {
+        ESP_LOGW("BluetoothService", "Cannot send data, no device connected or TX characteristic invalid.");
+    }
 }
 
 void BluetoothService::sendData(uint8_t* data, size_t length) {
