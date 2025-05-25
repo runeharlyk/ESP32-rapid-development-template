@@ -46,13 +46,15 @@ class BluetoothService {
 
     void begin() {
         _cmdSubHandle = EventBus::subscribe<Command>(0, [this](Command const& cmd) {
-            std::string cmdStr = "CMD:" + std::to_string(cmd.lx);
-            sendData(cmdStr);
+            if (_deviceConnected) {
+                sendData(cmd.serialize().c_str());
+            }
         });
 
         _tempSubHandle = EventBus::subscribe<Temp>(0, [this](Temp const& temp) {
-            std::string tempStr = "TEMP:" + std::to_string(temp.value);
-            sendData(tempStr);
+            if (_deviceConnected) {
+                sendData(temp.serialize().c_str());
+            }
         });
 
         setup();
@@ -61,14 +63,17 @@ class BluetoothService {
     void handleReceivedData(const std::string& data) {
         ESP_LOGI("BluetoothService", "Received: %s", data.c_str());
 
-        if (data.substr(0, 4) == "CMD:") {
-            try {
+        try {
+            if (data.substr(0, 4) == "CMD:") {
                 float cmdValue = std::stof(data.substr(4));
                 Command cmd {.lx = cmdValue};
                 EventBus::publish<Command>(cmd);
-            } catch (const std::exception& e) {
-                ESP_LOGE("BluetoothService", "Failed to parse command: %s", e.what());
+            } else {
+                Command cmd = Command::deserialize(String(data.c_str()));
+                EventBus::publish<Command>(cmd);
             }
+        } catch (const std::exception& e) {
+            ESP_LOGE("BluetoothService", "Failed to parse command: %s", e.what());
         }
     }
 

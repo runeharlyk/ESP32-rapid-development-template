@@ -7,6 +7,7 @@
       name="viewport"
       content="width=device-width, initial-scale=1, maximum-scale=1"
     />
+    <script src="https://rawgit.com/kawanet/msgpack-lite/master/dist/msgpack.min.js"></script>
     <style>
       #tempDisplay {
         font-size: 24px;
@@ -40,6 +41,7 @@
       <button id="connect">Connect</button>
       <button id="disconnect" disabled>Disconnect</button>
       <div id="tempDisplay">Temperature: --</div>
+      <div id="msgCounter">Messages per second: 0</div>
       <div>
         <input
           id="command"
@@ -57,11 +59,26 @@
       const CHARACTERISTIC_RX_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
 
       let device, txChar, rxChar;
+      let msgCount = 0;
+      let lastMsgTime = Date.now();
 
       const log = (msg) => {
         document.getElementById("log").textContent += msg + "\n";
         document.getElementById("log").scrollTop = 1e9;
       };
+
+      const updateMsgCounter = () => {
+        const now = Date.now();
+        const elapsed = (now - lastMsgTime) / 1000;
+        const msgPerSec = (msgCount / elapsed).toFixed(1);
+        document.getElementById(
+          "msgCounter"
+        ).textContent = `Messages per second: ${msgPerSec}`;
+        msgCount = 0;
+        lastMsgTime = now;
+      };
+
+      setInterval(updateMsgCounter, 1000);
 
       document.getElementById("connect").onclick = async () => {
         device = await navigator.bluetooth.requestDevice({
@@ -74,15 +91,20 @@
         rxChar = await service.getCharacteristic(CHARACTERISTIC_RX_UUID);
         await txChar.startNotifications();
         txChar.addEventListener("characteristicvaluechanged", (e) => {
-          const dec = new TextDecoder();
-          const data = dec.decode(e.target.value);
-          log("RX: " + data);
+          const data = msgpack.decode(new Uint8Array(e.target.value.buffer));
+          log(
+            "RX: " +
+              JSON.stringify(data) +
+              " (" +
+              e.target.value.byteLength +
+              " bytes)"
+          );
+          msgCount++;
 
-          if (data.startsWith("TEMP:")) {
-            const temp = parseFloat(data.substring(5));
+          if (data.type === "TEMP") {
             document.getElementById(
               "tempDisplay"
-            ).textContent = `Temperature: ${temp.toFixed(2)}`;
+            ).textContent = `Temperature: ${data.value.toFixed(2)}`;
           }
         });
         document.getElementById("disconnect").disabled = false;
@@ -100,17 +122,23 @@
         document.getElementById("send").disabled = true;
         document.getElementById("connect").disabled = false;
         document.getElementById("tempDisplay").textContent = "Temperature: --";
+        msgCount = 0;
+        lastMsgTime = Date.now();
       };
 
       document.getElementById("send").onclick = async () => {
         const input = document.getElementById("command");
         const value = input.value;
         if (value) {
-          const cmdStr = "CMD:" + value;
-          const enc = new TextEncoder();
-          const data = enc.encode(cmdStr);
+          const cmd = {
+            type: "CMD",
+            lx: parseFloat(value),
+          };
+          const data = msgpack.encode(cmd);
           await rxChar.writeValue(data);
-          log("TX: " + cmdStr);
+          log(
+            "TX: " + JSON.stringify(cmd) + " (" + data.byteLength + " bytes)"
+          );
           input.value = "";
         }
       };

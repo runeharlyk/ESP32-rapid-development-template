@@ -27,7 +27,11 @@ void setup() {
 
 void loop() {
     static float v = 0;
-    Temp t {.value = v++};
-    EventBus::publish<Temp>(t);
-    delay(200);
+    Command t {
+        .lx = v++,
+        .ly = v,
+
+    };
+    EventBus::publish<Command>(t);
+    delay(20);
 }
