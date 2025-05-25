@@ -45,13 +45,13 @@ class BluetoothService {
     }
 
     void begin() {
-        _cmdSubHandle = EventBus::subscribe<Command>(0, [this](Command const& cmd) {
+        _cmdSubHandle = EventBus::subscribe<Command>([this](Command const& cmd) {
             if (_deviceConnected) {
                 sendData(cmd.serialize().c_str());
             }
         });
 
-        _tempSubHandle = EventBus::subscribe<Temp>(0, [this](Temp const& temp) {
+        _tempSubHandle = EventBus::subscribe<Temp>([this](Temp const& temp) {
             if (_deviceConnected) {
                 sendData(temp.serialize().c_str());
             }
@@ -67,10 +67,10 @@ class BluetoothService {
             if (data.substr(0, 4) == "CMD:") {
                 float cmdValue = std::stof(data.substr(4));
                 Command cmd {.lx = cmdValue};
-                EventBus::publish<Command>(cmd);
+                EventBus::publish<Command>(cmd, _cmdSubHandle);
             } else {
                 Command cmd = Command::deserialize(String(data.c_str()));
-                EventBus::publish<Command>(cmd);
+                EventBus::publish<Command>(cmd, _cmdSubHandle);
             }
         } catch (const std::exception& e) {
             ESP_LOGE("BluetoothService", "Failed to parse command: %s", e.what());
@@ -138,9 +138,6 @@ void BluetoothService::sendData(const std::string& data) {
     if (_deviceConnected && _txCharacteristic) {
         _txCharacteristic->setValue(data);
         _txCharacteristic->notify();
-        ESP_LOGI("BluetoothService", "Sent: %s", data.c_str());
-    } else {
-        ESP_LOGW("BluetoothService", "Cannot send data, no device connected or TX characteristic invalid.");
     }
 }
 
@@ -148,8 +145,5 @@ void BluetoothService::sendData(uint8_t* data, size_t length) {
     if (_deviceConnected && _txCharacteristic) {
         _txCharacteristic->setValue(data, length);
         _txCharacteristic->notify();
-        ESP_LOGI("BluetoothService", "Sent %d bytes", length);
-    } else {
-        ESP_LOGW("BluetoothService", "Cannot send data, no device connected or TX characteristic invalid.");
     }
 }

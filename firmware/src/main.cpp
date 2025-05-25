@@ -5,12 +5,14 @@
 
 BluetoothService bluetoothService;
 
+void* _tempSubHandle;
+
 void setup() {
     Serial.begin(115200);
 
     bluetoothService.begin();
 
-    EventBus::subscribe<Temp>([](Temp const& t) {
+    _tempSubHandle = EventBus::subscribe<Temp>([](Temp const& t) {
         Serial.print("fast: ");
         Serial.println(t.value);
     });
@@ -21,17 +23,13 @@ void setup() {
 
     EventBus::subscribe<Command>([](Command const& c) {
         Serial.print("main - command: ");
-        Serial.println(c.lx);
+        Serial.println(c.serialize());
     });
 }
 
 void loop() {
     static float v = 0;
-    Command t {
-        .lx = v++,
-        .ly = v,
-
-    };
-    EventBus::publish<Command>(t);
+    Temp t {.value = v++};
+    EventBus::publish<Temp>(t, _tempSubHandle);
     delay(20);
 }

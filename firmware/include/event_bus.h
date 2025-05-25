@@ -29,9 +29,9 @@ struct JsonSerializable : IJsonMessage {
 #else
         DeserializationError error = deserializeJson(doc, s);
 #endif
-        // if (error) {
-        //     throw std::runtime_error(error.c_str());
-        // }
+        if (error) {
+            throw std::runtime_error(error.c_str());
+        }
         JsonObject obj = doc.as<JsonObject>();
         D d;
         static_cast<D&>(d).fromJson(obj);
@@ -88,8 +88,8 @@ class EventBus {
     }
 
     template <typename Msg, typename C>
-    static void subscribe(C&& c) {
-        subscribe<Msg>(0, std::forward<C>(c));
+    static void* subscribe(C&& c) {
+        return subscribe<Msg>(0, std::forward<C>(c));
     }
 
     template <typename Msg>
