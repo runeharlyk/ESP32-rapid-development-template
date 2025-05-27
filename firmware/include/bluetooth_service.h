@@ -7,19 +7,78 @@
 #include "event_bus.h"
 #include "message_types.h"
 
+#include <map>
+#include <list>
+#include <vector>
+
 #define SERVICE_UUID "6e400001-b5a3-f393-e0a9-e50e24dcca9e"
 #define CHARACTERISTIC_TX "6e400003-b5a3-f393-e0a9-e50e24dcca9e"
 #define CHARACTERISTIC_RX "6e400002-b5a3-f393-e0a9-e50e24dcca9e"
 
+#define CALLS_PER_SECOND(name)                                            \
+    static unsigned long name##_count = 0;                                \
+    static unsigned long last_time = 0;                                   \
+    name##_count++;                                                       \
+    if (millis() - last_time >= 1000) {                                   \
+        Serial.printf("%s: %lu calls per second\n", #name, name##_count); \
+        name##_count = 0;                                                 \
+        last_time = millis();                                             \
+    }
+
+// SemaphoreHandle_t clientSubscriptionsMutex = xSemaphoreCreateMutex();
 /////////////////////
 
 enum message_type_t { CONNECT = 0, DISCONNECT = 1, EVENT = 2, PING = 3, PONG = 4 };
 
-class CommAdapterBase {};
+class CommAdapterBase {
+  public:
+    using EventCallback = std::function<void(const JsonObject&, int)>;
+    using SubscribeCallback = std::function<void(const String&, bool)>;
+
+    CommAdapterBase() { mutex_ = xSemaphoreCreateMutex(); }
+    ~CommAdapterBase() { vSemaphoreDelete(mutex_); }
+
+    void subscribe(message_topic_t topic, int clientId) {
+        xSemaphoreTake(mutex_, portMAX_DELAY);
+        subscriptions_[topic].push_back(clientId);
+        xSemaphoreGive(mutex_);
+        notifySubscribe(topic, String(clientId), true);
+    }
+
+    void unsubscribe(message_topic_t topic, int clientId) {
+        xSemaphoreTake(mutex_, portMAX_DELAY);
+        subscriptions_[topic].remove(clientId);
+        xSemaphoreGive(mutex_);
+        notifySubscribe(topic, String(clientId), false);
+    }
+
+    bool hasSubscribers(message_topic_t topic) {
+        xSemaphoreTake(mutex_, portMAX_DELAY);
+        bool r = !subscriptions_[topic].empty();
+        xSemaphoreGive(mutex_);
+        return r;
+    }
+
+  protected:
+    void notifyEvent(message_topic_t topic, const JsonObject& j, int originId) {
+        for (auto& cb : eventCallbacks_[topic]) cb(j, originId);
+    }
+    void notifySubscribe(message_topic_t topic, const String& originId, bool connected) {
+        for (auto& cb : subscribeCallbacks_[topic]) cb(originId, connected);
+    }
+
+    virtual void send(const std::string& data) = 0;
+
+  private:
+    SemaphoreHandle_t mutex_;
+    std::map<message_topic_t, std::list<int>> subscriptions_;
+    std::map<message_topic_t, std::vector<EventCallback>> eventCallbacks_;
+    std::map<message_topic_t, std::vector<SubscribeCallback>> subscribeCallbacks_;
+};
 
 /////////////////////
 
-class BluetoothService {
+class BluetoothService : public CommAdapterBase {
     BLEServer* _server;
     BLECharacteristic* _txCharacteristic;
     BLECharacteristic* _rxCharacteristic;
@@ -69,6 +128,8 @@ class BluetoothService {
     }
 
     void handleReceivedData(const std::string& data) {
+        CALLS_PER_SECOND(new_message);
+
         JsonDocument doc;
 #if USE_MSGPACK
         DeserializationError error = deserializeMsgPack(doc, data);
@@ -82,30 +143,34 @@ class BluetoothService {
 
         message_type_t type = obj[0].as<message_type_t>();
 
+        int cid = 0;
+
         switch (type) {
             case CONNECT: {
-                message_identifier_t msgTopic = obj[1].as<message_identifier_t>();
-                ESP_LOGI("BluetoothService", "Connecting to topic: %d", msgTopic);
+                message_topic_t topic = obj[1].as<message_topic_t>();
+                ESP_LOGI("BluetoothService", "Connecting to topic: %d", topic);
+                subscribe(topic, cid);
                 break;
             }
             case DISCONNECT: {
-                message_identifier_t msgTopic = obj[1].as<message_identifier_t>();
-                ESP_LOGI("BluetoothService", "Disconnecting to topic: %d", msgTopic);
+                message_topic_t topic = obj[1].as<message_topic_t>();
+                ESP_LOGI("BluetoothService", "Disconnecting to topic: %d", topic);
+                unsubscribe(topic, cid);
                 break;
             }
 
             case EVENT: {
-                message_identifier_t msgTopic = obj[1].as<message_identifier_t>();
-                if (msgTopic == TEMP) {
+                message_topic_t topic = obj[1].as<message_topic_t>();
+                if (topic == TEMP) {
                     Temp payload;
                     payload.fromJson(obj[2]);
                     EventBus::publish<Temp>(payload, _tempSubHandle);
-                } else if (msgTopic == COMMAND) {
+                } else if (topic == COMMAND) {
                     Command payload;
                     payload.fromJson(obj[2]);
                     EventBus::publish<Command>(payload, _tempSubHandle);
                 };
-                ESP_LOGI("BluetoothService", "Got payload for topic: %d", msgTopic);
+                ESP_LOGD("BluetoothService", "Got payload for topic: %d", msgTopic);
                 break;
             }
 

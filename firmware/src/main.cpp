@@ -31,5 +31,5 @@ void loop() {
     static float v = 0;
     Temp t {.value = v++};
     EventBus::publish<Temp>(t, _tempSubHandle);
-    delay(20);
+    delay(200);
 }

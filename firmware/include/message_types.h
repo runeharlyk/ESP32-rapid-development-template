@@ -1,7 +1,7 @@
 #pragma once
 #include "event_bus.h"
 
-enum message_identifier_t { TEMP = 1, COMMAND = 2 };
+enum message_topic_t { TEMP = 1, COMMAND = 2 };
 
 struct Temp : JsonSerializable<Temp> {
     float value;
