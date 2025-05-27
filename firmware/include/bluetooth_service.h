@@ -11,6 +11,14 @@
 #define CHARACTERISTIC_TX "6e400003-b5a3-f393-e0a9-e50e24dcca9e"
 #define CHARACTERISTIC_RX "6e400002-b5a3-f393-e0a9-e50e24dcca9e"
 
+/////////////////////
+
+enum message_type_t { CONNECT = 0, DISCONNECT = 1, EVENT = 2, PING = 3, PONG = 4 };
+
+class CommAdapterBase {};
+
+/////////////////////
+
 class BluetoothService {
     BLEServer* _server;
     BLECharacteristic* _txCharacteristic;
@@ -61,19 +69,47 @@ class BluetoothService {
     }
 
     void handleReceivedData(const std::string& data) {
-        ESP_LOGI("BluetoothService", "Received: %s", data.c_str());
+        JsonDocument doc;
+#if USE_MSGPACK
+        DeserializationError error = deserializeMsgPack(doc, data);
+#else
+        DeserializationError error = deserializeJson(doc, s);
+#endif
+        if (error) {
+            throw std::runtime_error(error.c_str());
+        }
+        JsonArray obj = doc.as<JsonArray>();
 
-        try {
-            if (data.substr(0, 4) == "CMD:") {
-                float cmdValue = std::stof(data.substr(4));
-                Command cmd {.lx = cmdValue};
-                EventBus::publish<Command>(cmd, _cmdSubHandle);
-            } else {
-                Command cmd = Command::deserialize(String(data.c_str()));
-                EventBus::publish<Command>(cmd, _cmdSubHandle);
+        message_type_t type = obj[0].as<message_type_t>();
+
+        switch (type) {
+            case CONNECT: {
+                message_identifier_t msgTopic = obj[1].as<message_identifier_t>();
+                ESP_LOGI("BluetoothService", "Connecting to topic: %d", msgTopic);
+                break;
             }
-        } catch (const std::exception& e) {
-            ESP_LOGE("BluetoothService", "Failed to parse command: %s", e.what());
+            case DISCONNECT: {
+                message_identifier_t msgTopic = obj[1].as<message_identifier_t>();
+                ESP_LOGI("BluetoothService", "Disconnecting to topic: %d", msgTopic);
+                break;
+            }
+
+            case EVENT: {
+                message_identifier_t msgTopic = obj[1].as<message_identifier_t>();
+                if (msgTopic == TEMP) {
+                    Temp payload;
+                    payload.fromJson(obj[2]);
+                    EventBus::publish<Temp>(payload, _tempSubHandle);
+                } else if (msgTopic == COMMAND) {
+                    Command payload;
+                    payload.fromJson(obj[2]);
+                    EventBus::publish<Command>(payload, _tempSubHandle);
+                };
+                ESP_LOGI("BluetoothService", "Got payload for topic: %d", msgTopic);
+                break;
+            }
+
+            default: ESP_LOGW("BluetoothService", "Uknown message type: %d", type); break;
         }
     }
 

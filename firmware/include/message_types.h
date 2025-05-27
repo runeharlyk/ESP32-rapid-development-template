@@ -1,8 +1,6 @@
 #pragma once
 #include "event_bus.h"
 
-enum message_type_t { CONNECT = 0, DISCONNECT = 1, EVENT = 2, PING = 3, PONG = 4 };
-
 enum message_identifier_t { TEMP = 1, COMMAND = 2 };
 
 struct Temp : JsonSerializable<Temp> {

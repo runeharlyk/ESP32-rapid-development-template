@@ -22,6 +22,7 @@ struct JsonSerializable : IJsonMessage {
 #endif
         return s;
     }
+
     static D deserialize(const String& s) {
         JsonDocument doc;
 #if USE_MSGPACK
