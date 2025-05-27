@@ -25,7 +25,6 @@
         last_time = millis();                                             \
     }
 
-// SemaphoreHandle_t clientSubscriptionsMutex = xSemaphoreCreateMutex();
 /////////////////////
 
 enum message_type_t { CONNECT = 0, DISCONNECT = 1, EVENT = 2, PING = 3, PONG = 4 };
@@ -38,42 +37,59 @@ class CommAdapterBase {
     CommAdapterBase() { mutex_ = xSemaphoreCreateMutex(); }
     ~CommAdapterBase() { vSemaphoreDelete(mutex_); }
 
-    void subscribe(message_topic_t topic, int clientId) {
+    void subscribe(message_topic_t t, int cid) {
         xSemaphoreTake(mutex_, portMAX_DELAY);
-        subscriptions_[topic].push_back(clientId);
+        subs_[t].push_back(cid);
         xSemaphoreGive(mutex_);
-        notifySubscribe(topic, String(clientId), true);
+        for (auto& cb : subCbs_[t]) cb(String(cid), true);
     }
 
-    void unsubscribe(message_topic_t topic, int clientId) {
+    void unsubscribe(message_topic_t t, int cid) {
         xSemaphoreTake(mutex_, portMAX_DELAY);
-        subscriptions_[topic].remove(clientId);
+        subs_[t].remove(cid);
         xSemaphoreGive(mutex_);
-        notifySubscribe(topic, String(clientId), false);
+        for (auto& cb : subCbs_[t]) cb(String(cid), false);
     }
 
-    bool hasSubscribers(message_topic_t topic) {
+    bool hasSubscribers(message_topic_t t) {
         xSemaphoreTake(mutex_, portMAX_DELAY);
-        bool r = !subscriptions_[topic].empty();
+        bool r = !subs_[t].empty();
         xSemaphoreGive(mutex_);
         return r;
     }
 
-  protected:
-    void notifyEvent(message_topic_t topic, const JsonObject& j, int originId) {
-        for (auto& cb : eventCallbacks_[topic]) cb(j, originId);
-    }
-    void notifySubscribe(message_topic_t topic, const String& originId, bool connected) {
-        for (auto& cb : subscribeCallbacks_[topic]) cb(originId, connected);
+    void onEvent(message_topic_t t, EventCallback cb) { eventCbs_[t].push_back(std::move(cb)); }
+    void onSubscribe(message_topic_t t, SubscribeCallback cb) { subCbs_[t].push_back(std::move(cb)); }
+
+    template <typename T>
+    void emit(message_topic_t topic, T const& payload) {
+        if (!hasSubscribers(topic)) return;
+
+        JsonDocument doc;
+        JsonArray array = doc.to<JsonArray>();
+        array.add((int)EVENT);
+        array.add((int)topic);
+        JsonObject obj = array.add<JsonObject>();
+        toJson(obj, payload);
+
+        String out;
+#if USE_MSGPACK
+        serializeMsgPack(doc, out);
+#else
+        serializeJson(doc, out);
+#endif
+
+        send(out.c_str());
     }
 
-    virtual void send(const std::string& data) = 0;
+  protected:
+    virtual void send(const char* data) = 0;
 
   private:
     SemaphoreHandle_t mutex_;
-    std::map<message_topic_t, std::list<int>> subscriptions_;
-    std::map<message_topic_t, std::vector<EventCallback>> eventCallbacks_;
-    std::map<message_topic_t, std::vector<SubscribeCallback>> subscribeCallbacks_;
+    std::map<message_topic_t, std::list<int>> subs_;
+    std::map<message_topic_t, std::vector<EventCallback>> eventCbs_;
+    std::map<message_topic_t, std::vector<SubscribeCallback>> subCbs_;
 };
 
 /////////////////////
@@ -112,16 +128,12 @@ class BluetoothService : public CommAdapterBase {
     }
 
     void begin() {
-        _cmdSubHandle = EventBus::subscribe<Command>([this](Command const& cmd) {
-            if (_deviceConnected) {
-                sendData(cmd.serialize().c_str());
-            }
+        _cmdSubHandle = EventBus::subscribe<Command>([this](Command const& c) {
+            if (_deviceConnected) emit(COMMAND, c);
         });
 
-        _tempSubHandle = EventBus::subscribe<Temp>([this](Temp const& temp) {
-            if (_deviceConnected) {
-                sendData(temp.serialize().c_str());
-            }
+        _tempSubHandle = EventBus::subscribe<Temp>([this](Temp const& t) {
+            if (_deviceConnected) emit(TEMP, t);
         });
 
         setup();
@@ -180,8 +192,13 @@ class BluetoothService : public CommAdapterBase {
 
     void restart();
     void setup();
-    void sendData(const std::string& data);
-    void sendData(uint8_t* data, size_t length);
+
+    void send(const char* data) override {
+        if (_deviceConnected) {
+            _txCharacteristic->setValue((uint8_t*)data, strlen(data));
+            _txCharacteristic->notify();
+        }
+    }
 };
 
 void BluetoothService::ServerCallbacks::onConnect(BLEServer* pServer) {
@@ -233,18 +250,4 @@ void BluetoothService::setup() {
     _server->getAdvertising()->start();
 
     ESP_LOGI("BluetoothService", "BLE UART service started, advertising as %s", deviceName);
-}
-
-void BluetoothService::sendData(const std::string& data) {
-    if (_deviceConnected && _txCharacteristic) {
-        _txCharacteristic->setValue(data);
-        _txCharacteristic->notify();
-    }
-}
-
-void BluetoothService::sendData(uint8_t* data, size_t length) {
-    if (_deviceConnected && _txCharacteristic) {
-        _txCharacteristic->setValue(data, length);
-        _txCharacteristic->notify();
-    }
 }

@@ -58,13 +58,43 @@
       const CHARACTERISTIC_TX_UUID = "6e400003-b5a3-f393-e0a9-e50e24dcca9e";
       const CHARACTERISTIC_RX_UUID = "6e400002-b5a3-f393-e0a9-e50e24dcca9e";
 
+      const MESSAGE_TYPE = {
+        CONNECT: 0,
+        DISCONNECT: 1,
+        EVENT: 2,
+        PING: 3,
+        PONG: 4,
+      };
+
+      const MESSAGE_TOPIC = {
+        TEMP: 1,
+        COMMAND: 2,
+      };
+
       let device, txChar, rxChar;
       let msgCount = 0;
       let lastMsgTime = Date.now();
+      const getResponse = false;
 
       const log = (msg) => {
         document.getElementById("log").textContent += msg + "\n";
         document.getElementById("log").scrollTop = 1e9;
+      };
+
+      const send = async (raw_data) => {
+        const data = msgpack.encode(raw_data);
+        await (getResponse
+          ? rxChar.writeValue(data)
+          : rxChar.writeValueWithoutResponse(data));
+        log(
+          "TX: " + JSON.stringify(raw_data) + " (" + data.byteLength + " bytes)"
+        );
+        msgCount++;
+      };
+
+      const subscribe = async () => {
+        await send([MESSAGE_TYPE.CONNECT, MESSAGE_TOPIC.TEMP]);
+        await send([MESSAGE_TYPE.CONNECT, MESSAGE_TOPIC.COMMAND]);
       };
 
       const updateMsgCounter = () => {
@@ -90,6 +120,13 @@
         txChar = await service.getCharacteristic(CHARACTERISTIC_TX_UUID);
         rxChar = await service.getCharacteristic(CHARACTERISTIC_RX_UUID);
         await txChar.startNotifications();
+        subscribe();
+        setTimeout(async () => {
+          setInterval(async () => {
+            await send([MESSAGE_TYPE.EVENT, MESSAGE_TOPIC.TEMP, { value: 1 }]);
+          }, 1000);
+        }, 500);
+
         txChar.addEventListener("characteristicvaluechanged", (e) => {
           const data = msgpack.decode(new Uint8Array(e.target.value.buffer));
           log(
@@ -130,15 +167,7 @@
         const input = document.getElementById("command");
         const value = input.value;
         if (value) {
-          const cmd = {
-            type: "CMD",
-            lx: parseFloat(value),
-          };
-          const data = msgpack.encode(cmd);
-          await rxChar.writeValue(data);
-          log(
-            "TX: " + JSON.stringify(cmd) + " (" + data.byteLength + " bytes)"
-          );
+          send([2, 1, { value }]);
           input.value = "";
         }
       };

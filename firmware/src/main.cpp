@@ -23,7 +23,6 @@ void setup() {
 
     EventBus::subscribe<Command>([](Command const& c) {
         Serial.print("main - command: ");
-        Serial.println(c.serialize());
     });
 }
 
