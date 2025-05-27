@@ -1,6 +1,7 @@
 #pragma once
 #include "event_bus.h"
 
+// TODO: Find a way to match a topic with the data type
 enum message_topic_t { TEMP = 1, COMMAND = 2 };
 
 struct Temp {

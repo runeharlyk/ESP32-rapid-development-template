@@ -171,7 +171,7 @@ class BluetoothService : public CommAdapterBase {
                 break;
             }
 
-            case EVENT: {
+            case EVENT: { // TODO: Make this generic
                 message_topic_t topic = obj[1].as<message_topic_t>();
                 if (topic == TEMP) {
                     Temp payload;
