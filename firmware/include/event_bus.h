@@ -6,40 +6,6 @@
 
 static_assert(!(USE_JSON == 1 && USE_MSGPACK == 1), "Cannot set both USE_JSON and USE_MSGPACK to 1 simultaneously");
 
-struct IJsonMessage {};
-
-template <typename D>
-struct JsonSerializable : IJsonMessage {
-    String serialize() const {
-        JsonDocument doc;
-        JsonObject obj = doc.to<JsonObject>();
-        static_cast<D const&>(*this).toJson(obj);
-        String s;
-#if USE_MSGPACK
-        serializeMsgPack(doc, s);
-#else
-        serializeJson(doc, s);
-#endif
-        return s;
-    }
-
-    static D deserialize(const String& s) {
-        JsonDocument doc;
-#if USE_MSGPACK
-        DeserializationError error = deserializeMsgPack(doc, s);
-#else
-        DeserializationError error = deserializeJson(doc, s);
-#endif
-        if (error) {
-            throw std::runtime_error(error.c_str());
-        }
-        JsonObject obj = doc.as<JsonObject>();
-        D d;
-        static_cast<D&>(d).fromJson(obj);
-        return d;
-    }
-};
-
 class EventBus {
     template <typename Msg>
     struct Sub {
