@@ -1,41 +1,34 @@
 <script lang="ts">
   import { ble } from '$lib/ble-adapter'
-  import { dataBroker, MessageTopic, type Temp } from '$lib/interfaces/transport.interface'
-
+  import { EventBus } from '$lib/event-bus'
+  let log = ''
   let value = 0
-  let bleConnected = ble.connected
-  let log: string[] = $state([])
-  let subscriptionId = ''
 
-  dataBroker.addTransport(ble)
-
-  const handleTemp = (data: Temp) => {
-    console.log('temp', data)
-    log.push('rx: ' + JSON.stringify(data))
+  type Temp = {
+    value: number
   }
 
+  EventBus.subscribe<Temp>('temp', data => {
+    log += JSON.stringify(data)
+  })
+
   const publish = () => {
-    const data = { value: 110 }
-    log.push('Publish: ' + JSON.stringify(data))
-    dataBroker.emit(MessageTopic.TEMP, data, subscriptionId)
+    ble.send([2, 1, { value: 110 }])
   }
 
   const subscribe = () => {
-    log.push('Subscribe (temp)')
-    subscriptionId = dataBroker.on<Temp>(MessageTopic.TEMP, handleTemp)
+    ble.send([0, 1])
   }
 
   const unsubscribe = () => {
-    log.push('Unsubscribe (temp)')
-    dataBroker.off(subscriptionId)
-    subscriptionId = ''
+    ble.send([1, 1])
   }
 </script>
 
-<div class="flex h-dvh flex-col p-4">
+<div class="p-4">
   <h1 class="text-xl">Connect to device</h1>
   <div>
-    {#if $bleConnected}
+    {#if $ble}
       Connected
     {:else}
       Disconnected
@@ -62,6 +55,7 @@
     <button class="btn btn-primary" onclick={() => ble.send([2, 1, { value }])}>Send</button>
   </div>
 
-  <textarea class="flex-1 rounded-md bg-gray-100 p-2 text-xs text-gray-500"
-    >{log.join('\n')}</textarea>
+  <pre>
+      {log}
+    </pre>
 </div>

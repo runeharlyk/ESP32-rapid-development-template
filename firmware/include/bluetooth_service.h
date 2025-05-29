@@ -31,8 +31,8 @@ enum message_type_t { CONNECT = 0, DISCONNECT = 1, EVENT = 2, PING = 3, PONG = 4
 
 class CommAdapterBase {
   public:
-    using EventCallback = std::function<void(const JsonObject&, int)>;
-    using SubscribeCallback = std::function<void(const String&, bool)>;
+    // using EventCallback = std::function<void(const JsonObject&, int)>;
+    // using SubscribeCallback = std::function<void(const String&, bool)>;
 
     CommAdapterBase() { mutex_ = xSemaphoreCreateMutex(); }
     ~CommAdapterBase() { vSemaphoreDelete(mutex_); }
@@ -41,14 +41,14 @@ class CommAdapterBase {
         xSemaphoreTake(mutex_, portMAX_DELAY);
         subs_[t].push_back(cid);
         xSemaphoreGive(mutex_);
-        for (auto& cb : subCbs_[t]) cb(String(cid), true);
+        // for (auto& cb : subCbs_[t]) cb(String(cid), true);
     }
 
     void unsubscribe(message_topic_t t, int cid) {
         xSemaphoreTake(mutex_, portMAX_DELAY);
         subs_[t].remove(cid);
         xSemaphoreGive(mutex_);
-        for (auto& cb : subCbs_[t]) cb(String(cid), false);
+        // for (auto& cb : subCbs_[t]) cb(String(cid), false);
     }
 
     bool hasSubscribers(message_topic_t t) {
@@ -58,8 +58,8 @@ class CommAdapterBase {
         return r;
     }
 
-    void onEvent(message_topic_t t, EventCallback cb) { eventCbs_[t].push_back(std::move(cb)); }
-    void onSubscribe(message_topic_t t, SubscribeCallback cb) { subCbs_[t].push_back(std::move(cb)); }
+    // void onEvent(message_topic_t t, EventCallback cb) { eventCbs_[t].push_back(std::move(cb)); }
+    // void onSubscribe(message_topic_t t, SubscribeCallback cb) { subCbs_[t].push_back(std::move(cb)); }
 
     template <typename T>
     void emit(message_topic_t topic, T const& payload) {
@@ -88,8 +88,8 @@ class CommAdapterBase {
   private:
     SemaphoreHandle_t mutex_;
     std::map<message_topic_t, std::list<int>> subs_;
-    std::map<message_topic_t, std::vector<EventCallback>> eventCbs_;
-    std::map<message_topic_t, std::vector<SubscribeCallback>> subCbs_;
+    // std::map<message_topic_t, std::vector<EventCallback>> eventCbs_;
+    // std::map<message_topic_t, std::vector<SubscribeCallback>> subCbs_;
 };
 
 /////////////////////
