@@ -1,54 +1,15 @@
 import msgpack from 'msgpack-lite'
 import { writable } from 'svelte/store'
-import { EventBus } from './event-bus'
 import {
   MessageTopic,
   MessageType,
-  type Command,
   type DataBrokerCallback,
-  type ITransport,
-  type Temp
+  type ITransport
 } from './interfaces/transport.interface'
 
 const SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e'
 const CHARACTERISTIC_TX_UUID = '6e400003-b5a3-f393-e0a9-e50e24dcca9e'
 const CHARACTERISTIC_RX_UUID = '6e400002-b5a3-f393-e0a9-e50e24dcca9e'
-
-declare global {
-  interface Navigator {
-    bluetooth: {
-      requestDevice(options: {
-        acceptAllDevices: boolean
-        optionalServices: string[]
-      }): Promise<BluetoothDevice>
-    }
-  }
-}
-
-interface BluetoothDevice {
-  gatt?: {
-    connect(): Promise<BluetoothRemoteGATTServer>
-    connected: boolean
-    disconnect(): Promise<void>
-  }
-}
-
-interface BluetoothRemoteGATTServer {
-  getPrimaryService(service: string): Promise<BluetoothRemoteGATTService>
-}
-
-interface BluetoothRemoteGATTService {
-  getCharacteristic(characteristic: string): Promise<BluetoothRemoteGATTCharacteristic>
-}
-
-interface BluetoothRemoteGATTCharacteristic {
-  startNotifications(): Promise<BluetoothRemoteGATTCharacteristic>
-  writeValue(value: BufferSource): Promise<void>
-  addEventListener(
-    type: string,
-    listener: (event: { target: { value: ArrayBuffer } }) => void
-  ): void
-}
 
 function createBLEAdapter(): ITransport {
   const dataCallbacks: DataBrokerCallback<unknown>[] = []
