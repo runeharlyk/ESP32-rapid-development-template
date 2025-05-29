@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { ble } from '$lib/ble-adapter'
-  import { dataBroker, MessageTopic, type Temp } from '$lib/interfaces/transport.interface'
+  import { ble } from '$lib/transport/ble-adapter'
+  import { MessageTopic, type Temp } from '$lib/interfaces/transport.interface'
+  import { dataBroker } from '$lib/transport/databroker'
 
-  let value = 0
+  let value = $state(0)
   let bleConnected = ble.connected
   let log: string[] = $state([])
   let subscriptionId = ''
